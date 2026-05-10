@@ -238,18 +238,10 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "SchoolMS API v1"));
     // available at /swagger
 }
-// Serve uploaded files
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(Directory.GetCurrentDirectory(), "uploads")),
-    RequestPath = "/uploads"
-});
-
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ── Serve uploaded files (development only — Azure Blob handles production) ───
+// Local file serving — development only (production uses Azure Blob Storage)
 if (app.Environment.IsDevelopment())
 {
     var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
