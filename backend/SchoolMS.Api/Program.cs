@@ -279,12 +279,23 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 app.MapControllers();
 
 // ── Auto-migrate on startup ───────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
+try
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+    Console.WriteLine("[STARTUP] Database migration completed.");
 }
-using var seedScope = app.Services.CreateScope();
+catch (Exception ex)
+{
+    Console.WriteLine($"[STARTUP] Database migration failed: {ex.GetType().Name}: {ex.Message}");
+    if (ex.InnerException != null)
+        Console.WriteLine($"[STARTUP] Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+}
+
+try
+{
+    using var seedScope = app.Services.CreateScope();
     var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     // Seed grading scale
@@ -303,6 +314,11 @@ using var seedScope = app.Services.CreateScope();
         seedDb.SaveChanges();
         Console.WriteLine("[SEED] Grading scales seeded.");
     }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[STARTUP] Seeding failed: {ex.GetType().Name}: {ex.Message}");
+}
 
 
 
