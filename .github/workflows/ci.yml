@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  # ── Backend: Build + Test ──────────────────────────────────────────────────
+  backend:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: schoolms_test
+          POSTGRES_USER: schoolms_user
+          POSTGRES_PASSWORD: TestPass123!
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore backend/SchoolMS.sln
+
+      - name: Build
+        run: dotnet build backend/SchoolMS.sln --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test backend/SchoolMS.sln --no-build --configuration Release --verbosity normal
+        env:
+          ConnectionStrings__Default: "Host=localhost;Database=schoolms_test;Username=schoolms_user;Password=TestPass123!"
+          Jwt__Secret: "ci-test-secret-key-minimum-64-characters-for-hmac-sha256-algorithm"
+          Jwt__Issuer: "SchoolMS"
+          Jwt__Audience: "SchoolMS"
+          ASPNETCORE_ENVIRONMENT: "Testing"
+
+      - name: Publish coverage
+        if: github.event_name == 'push'
+        run: |
+          dotnet test backend/SchoolMS.sln \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage
+        continue-on-error: true
+
+  # ── Frontend: Build + Lint ─────────────────────────────────────────────────
+  frontend:
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: TypeScript check
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Build
+        run: cd frontend && npm run build
+        env:
+          VITE_API_URL: "https://api.schoolms.com/api/v1"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # ── Security Scan ──────────────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [ backend, frontend ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Vulnerability scan (NuGet)
+        run: dotnet list backend/SchoolMS.sln package --vulnerable --include-transitive
+        continue-on-error: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Vulnerability scan (npm)
+        run: cd frontend && npm audit --audit-level=high
+        continue-on-error: true
