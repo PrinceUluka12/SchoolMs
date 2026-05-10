@@ -6,7 +6,7 @@ on:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: schoolms-api-staging
+  AZURE_WEBAPP_NAME: schoolms-api
   AZURE_WEBAPP_PACKAGE_PATH: ./publish
 
 jobs:
