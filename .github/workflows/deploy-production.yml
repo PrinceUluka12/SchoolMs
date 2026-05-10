@@ -36,7 +36,7 @@ jobs:
 
       - name: Restore & Build
         run: |
-          dotnet restore backend/SchoolMS.sln
+          dotnet restore backend/SchoolMS.slnx
           dotnet publish backend/SchoolMS.Api/SchoolMS.Api.csproj \
             --configuration Release \
             --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}

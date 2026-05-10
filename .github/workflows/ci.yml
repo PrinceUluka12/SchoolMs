@@ -48,13 +48,13 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
-        run: dotnet restore backend/SchoolMS.sln
+        run: dotnet restore backend/SchoolMS.slnx
 
       - name: Build
-        run: dotnet build backend/SchoolMS.sln --no-restore --configuration Release
+        run: dotnet build backend/SchoolMS.slnx --no-restore --configuration Release
 
       - name: Run tests
-        run: dotnet test backend/SchoolMS.sln --no-build --configuration Release --verbosity normal
+        run: dotnet test backend/SchoolMS.slnx --no-build --configuration Release --verbosity normal
         env:
           ConnectionStrings__Default: "Host=localhost;Database=schoolms_test;Username=schoolms_user;Password=TestPass123!"
           Jwt__Secret: "ci-test-secret-key-minimum-64-characters-for-hmac-sha256-algorithm"
@@ -65,7 +65,7 @@ jobs:
       - name: Publish coverage
         if: github.event_name == 'push'
         run: |
-          dotnet test backend/SchoolMS.sln \
+          dotnet test backend/SchoolMS.slnx \
             --collect:"XPlat Code Coverage" \
             --results-directory ./coverage
         continue-on-error: true
@@ -120,7 +120,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Vulnerability scan (NuGet)
-        run: dotnet list backend/SchoolMS.sln package --vulnerable --include-transitive
+        run: dotnet list backend/SchoolMS.slnx package --vulnerable --include-transitive
         continue-on-error: true
 
       - name: Setup Node
