@@ -41,9 +41,15 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 30
-          curl --fail https://schoolms-api-staging.azurewebsites.net/health/ready \
-            || (echo "Health check failed" && exit 1)
+          echo "Waiting for app to start..."
+          sleep 60
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i..."
+            curl --silent --fail https://schoolms-api-staging.azurewebsites.net/health/ready && echo "Healthy!" && exit 0
+            sleep 20
+          done
+          echo "Health check failed after all retries"
+          exit 1
 
   deploy-frontend-staging:
     name: Deploy Frontend to Staging (SWA)
